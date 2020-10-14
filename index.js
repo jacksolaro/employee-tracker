@@ -19,6 +19,11 @@ var connection = mysql.createConnection({
 // connect to the mysql server and sql database
 connection.connect(function (err) {
     if (err) throw err;
+
+    console.log("=================================")
+    console.log('||     WELCOME TO ACME CORP    ||');
+    console.log("=================================")
+
     // run the start function after the connection is made to prompt the user
     start();
 });
@@ -26,47 +31,49 @@ connection.connect(function (err) {
 
 // Start Function / Prompt Input
 function start() {
+
+    // Prompt the user for their choice
     inquirer
         .prompt({
             name: "choice",
             type: "rawlist",
             message: "What would you like to do?",
-            choices: ["Add Department", "Add Employee", "Add Role", "View Departments", "View Employees", "View Roles", "Update Employee Role","Update Employee Manager", "EXIT"],
+            choices: ["Add Department", "Add Employee", "Add Role", "View Departments", "View Employees", "View Roles", "Update Employee Role", "Update Employee Manager", "EXIT"],
             loop: false
         })
         .then(function (answer) {
             // based on answer above, run function to retrive what user is looking for
             switch (answer.choice) {
                 case "Add Department":
-                    //   Call Add Function
+                    //   Call Add Department Function
                     addDepartment();
                     break;
                 case "Add Employee":
-                    //   Call View Function
+                    //   Call Add Employee Function
                     addEmployee();
                     break;
                 case "Add Role":
-                    //   Call Update Function
+                    //   Call Add Role Function
                     addRole();
                     break;
                 case "View Departments":
-                    //   Returns a table of all departments
+                    //   Console logs a table of all departments
                     getDepartments();
                     break;
                 case "View Employees":
-                    //   Returns a table of all Employees
+                    //   Console logs a table of all Employees
                     getEmployees();
                     break;
                 case "View Roles":
-                    //   Returns a table of all roles
+                    //   Console logs a table of all roles
                     getRoles();
                     break;
                 case "Update Employee Role":
-                    //   Returns a table of all roles
-                    getRoles();
+                    //   Prompts the user for input to update an Employee's role
+                    updateEmployeeRole();
                     break;
                 case "Update Employee Manager":
-                    //   Returns a table of all roles
+                    //   Prompts the user for input to update an Employee's manager
                     updateEmployeeManager();
                     break;
                 case "EXIT":
@@ -84,9 +91,9 @@ function start() {
 // ADD METHODS
 // ========================================================
 
-// Add Department to Database
+// Add new Department to department table
 function addDepartment() {
-    // prompt for info about which song to look up
+    // prompt for what to name the department
     inquirer
         .prompt([
             {
@@ -96,7 +103,7 @@ function addDepartment() {
             }
         ])
         .then(function (answer) {
-            // when finished prompting, return songs that match that song title
+            // when finished prompting, add the new department into the department table in the database
             connection.query(`INSERT INTO department (name) VALUES (?)`, [answer.name], function (err, data) {
                 if (err) {
                     throw err;
@@ -108,17 +115,20 @@ function addDepartment() {
         })
 }
 
+// Add a new role to the role table
 function addRole() {
+    // Retrieve existing department data from department table in database
     connection.query(`SELECT * FROM department`, function (err, data) {
         if (err) throw err;
 
+        // Create an array to store currect departments
         let departmentArr = data.map(function (dep) {
             return {
                 name: dep.name,
                 value: dep.id
             }
         })
-        // prompt for info about which song to look up
+        // prompt for info on the new role to add
         inquirer
             .prompt([
                 {
@@ -139,8 +149,8 @@ function addRole() {
                 }
             ])
             .then(function (answer) {
-                // when finished prompting, return songs that match that song title
-                connection.query(`INSERT INTO role (title,salary,department_id) VALUES (?,?,?)`, [answer.title,answer.salary,answer.department_id], function (err, data) {
+                // when finished prompting, add new role into the role table in the database
+                connection.query(`INSERT INTO role (title,salary,department_id) VALUES (?,?,?)`, [answer.title, answer.salary, answer.department_id], function (err, data) {
                     if (err) {
                         throw err;
                     } else {
@@ -152,11 +162,14 @@ function addRole() {
     })
 }
 
+// Add a new employee to the employee table
 function addEmployee() {
 
+    // Retrieve existing role data from the database
     connection.query(`SELECT * FROM role`, function (err, data) {
         if (err) throw err;
 
+        // Create a new array to store the role data
         let rolesArr = data.map(function (role) {
             return {
                 name: role.title,
@@ -164,53 +177,58 @@ function addEmployee() {
             }
         })
 
+        // Retrieve existing employee data from the database to use as manager options
         connection.query(`SELECT * FROM employee`, function (err, data) {
             if (err) throw err;
-    
-            let employeeArr = data.map(function (employee) {
+
+            // Create a new array to store the manager data
+            let managerArr = data.map(function (employee) {
                 return {
                     name: `${employee.first_name} ${employee.last_name}`,
                     value: employee.id
                 }
             })
 
-        // prompt for info about which song to look up
-        inquirer
-            .prompt([
-                {
-                    name: "first_name",
-                    type: "input",
-                    message: "What is employee's FIRST NAME?",
-                },
-                {
-                    name: "last_name",
-                    type: "input",
-                    message: "What is the employee's LAST NAME?",
-                },
-                {
-                    name: "role_id",
-                    type: "list",
-                    message: "Which role is this employee in?",
-                    choices: rolesArr
-                },
-                {
-                    name: "manager_id",
-                    type: "list",
-                    message: "Who is this employee's manager?",
-                    choices: employeeArr
-                }
-            ])
-            .then(function (answer) {
-                // when finished prompting, return songs that match that song title
-                connection.query(`INSERT INTO employee (first_name,last_name,role_id,manager_id) VALUES (?,?,?,?)`, [answer.first_name,answer.last_name,answer.role_id,answer.manager_id], function (err, data) {
-                    if (err) {
-                        throw err;
-                    } else {
-                        getEmployees();
-                        console.log("SUCCESS: Your Employee has been added.")
+            // Add None/Null as an option to the manager array
+            managerArr.unshift({ name: "None", value: null });
+
+            // prompt for info on new employee to add
+            inquirer
+                .prompt([
+                    {
+                        name: "first_name",
+                        type: "input",
+                        message: "What is employee's FIRST NAME?",
+                    },
+                    {
+                        name: "last_name",
+                        type: "input",
+                        message: "What is the employee's LAST NAME?",
+                    },
+                    {
+                        name: "role_id",
+                        type: "list",
+                        message: "Which role is this employee in?",
+                        choices: rolesArr
+                    },
+                    {
+                        name: "manager_id",
+                        type: "list",
+                        message: "Who is this employee's manager?",
+                        choices: managerArr
                     }
+                ])
+                .then(function (answer) {
+                    // when finished prompting, add employee to the employee table
+                    connection.query(`INSERT INTO employee (first_name,last_name,role_id,manager_id) VALUES (?,?,?,?)`, [answer.first_name, answer.last_name, answer.role_id, answer.manager_id], function (err, data) {
+                        if (err) {
+                            throw err;
+                        } else {
+                            getEmployees();
+                            console.log("SUCCESS: Your Employee has been added.")
+                        }
+                    })
                 })
-            })
         })
     })
 }
@@ -219,8 +237,9 @@ function addEmployee() {
 // VIEW METHODS
 // ========================================================
 
-// View All Departments
+// Console logs All Departments in department table
 function getDepartments() {
+    // Retrieve department data from department table
     connection.query(`SELECT * FROM department`, function (err, data) {
         if (err) {
             throw err;
@@ -231,7 +250,7 @@ function getDepartments() {
     })
 }
 
-// View All Employees
+// Console logs All Employees with data joined from department and role tables
 function getEmployees() {
     connection.query(`SELECT employee.id AS "Employee ID",CONCAT(employee.first_name,' ',employee.last_name) AS "Employee Name",role.title AS "Employee Title",department.name AS "Employee Department", CONCAT(manager.first_name,' ',manager.last_name) AS "Manager" 
     FROM employee
@@ -247,7 +266,7 @@ function getEmployees() {
     })
 }
 
-// View All Roles
+// Console logs All roles with data joined from department tables
 function getRoles() {
     connection.query(`SELECT role.id AS "Role ID",role.title AS "Job Title",role.salary,department.name AS "Department" 
     FROM role
@@ -265,6 +284,63 @@ function getRoles() {
 // UPDATE METHODS
 // ========================================================
 
+// Update Employees Role
+function updateEmployeeRole() {
+
+    connection.query(`SELECT * FROM employee`, function (err, data) {
+        // If error, throw error
+        if (err) throw err;
+
+        // Create an array to hold the employee options
+        let employeeArr = data.map(function (employee) {
+            return {
+                name: `${employee.first_name} ${employee.last_name}`,
+                value: employee.id
+            }
+        })
+
+        connection.query(`SELECT * FROM role`, function (err, data) {
+            // Create an Array to hold the potential roles
+            let roleArr = data.map(function (role) {
+                return {
+                    name: role.title,
+                    value: role.id
+                }
+            })
+
+            // prompt for info about which employee's role to update
+            inquirer
+                .prompt([
+                    {
+                        name: "employee",
+                        type: "list",
+                        message: "Which employee would you like to update?",
+                        choices: employeeArr
+                    },
+                    {
+                        name: "role",
+                        type: "list",
+                        message: "Which role would you like to assign to this employee?",
+                        choices: roleArr
+                    }
+                ])
+                .then(function (answer) {
+                    // SQL update the manager for selected employee
+                    connection.query(`UPDATE employee SET role_id = ? WHERE id = ?`, [answer.role, answer.employee], function (err, data) {
+                        if (err) {
+                            // If Error, throw error
+                            throw err;
+                        } else {
+                            // Display List of all Employees
+                            getEmployees();
+                            // Console Log Success
+                            console.log("SUCCESS: Your Employee's role has been updated.")
+                        }
+                    })
+                })
+        })
+    })
+}
 
 // Update Employees Role
 function updateEmployeeManager() {
@@ -290,7 +366,7 @@ function updateEmployeeManager() {
         })
 
         // Add None/Null as an option to the manager array
-        managerArr.unshift({name:"None",value:null});
+        managerArr.unshift({ name: "None", value: null });
 
         // prompt for info about which employee's manager to update
         inquirer
@@ -310,7 +386,7 @@ function updateEmployeeManager() {
             ])
             .then(function (answer) {
                 // SQL update the manager for selected employee
-                connection.query(`UPDATE employee SET manager_id = ? WHERE id = ?`, [answer.manager,answer.employee], function (err, data) {
+                connection.query(`UPDATE employee SET manager_id = ? WHERE id = ?`, [answer.manager, answer.employee], function (err, data) {
                     if (err) {
                         // If Error, throw error
                         throw err;
@@ -324,165 +400,3 @@ function updateEmployeeManager() {
             })
     })
 }
-
-
-
-
-// COPY PASTED CODE V
-
-// function which prompts the user for what action they would like to take
-
-
-// function to search by song title
-// function searchBySong() {
-//     // prompt for info about which song to look up
-//     inquirer
-//         .prompt([
-//             {
-//                 name: "songTitle",
-//                 type: "input",
-//                 message: "What song would you like to search for?"
-//             }
-//         ])
-//         .then(function (answer) {
-//             // when finished prompting, return songs that match that song title
-//             connection.query(`SELECT * FROM top5000 WHERE song = ?`, [answer.songTitle], function (err, data) {
-//                 if (err) {
-//                     throw err;
-//                 } else {
-//                     console.table(data);
-//                     start();
-//                 }
-//             })
-//         })
-// }
-
-// // function to search by artist
-// function searchByArtist() {
-//     // prompt for info about which artist to look up
-//     inquirer
-//         .prompt([
-//             {
-//                 name: "artist",
-//                 type: "input",
-//                 message: "What artist would you like to search for?"
-//             }
-//         ])
-//         .then(function (answer) {
-//             // when finished prompting, return songs by that artist
-//             connection.query(`SELECT * FROM top5000 WHERE artist = ?`, [answer.artist], function (err, data) {
-//                 if (err) {
-//                     throw err;
-//                 } else {
-//                     console.table(data);
-//                     start();
-//                 }
-//             })
-//         })
-// }
-
-// // returns artists that have more than one song
-// function searchByDuplicateArtist() {
-//     // Return artists that have more than one song
-//     connection.query(`SELECT artist FROM top5000 GROUP BY artist HAVING count(artist) > 1`, function (err, data) {
-//         if (err) {
-//             throw err;
-//         } else {
-//             console.table(data);
-//             start();
-//         }
-//     })
-// }
-
-
-// // function to search by year range
-// function searchByYear() {
-//     // prompt for info about which year range look up
-//     inquirer
-//         .prompt([
-//             {
-//                 name: "year_min",
-//                 type: "input",
-//                 message: "What is the minimum year?"
-//             },
-//             {
-//                 name: "year_max",
-//                 type: "input",
-//                 message: "What is the maximum year?"
-//             }
-//         ])
-//         .then(function (answer) {
-//             connection.query(`SELECT * FROM top5000 WHERE year > ? and year < ?`, [answer.year_min,answer.year_max], function (err, data) {
-//                 if (err) {
-//                     throw err;
-//                 } else {
-//                     console.table(data);
-//                     start();
-//                 }
-//             })
-//         })
-// }
-
-// // function to search by song title
-// function searchByTop() {
-//     // prompt for info about which song to look up
-//     inquirer
-//         .prompt([
-//             {
-//                 name: "whichTop",
-//                 type: "list",
-//                 message: "Which top do you want to search by?",
-//                 choices: 
-//                 [     
-//                     {value: 'raw_total', name: "TOTAL TOP"},
-//                     {value: 'raw_us', name: "TOP US"},
-//                     {value: 'raw_uk', name: "TOP UK"},
-//                     {value: 'raw_eur', name: "TOP EUROPE"}
-//                 ]
-//             },
-//             {
-//                 name: "numTop",
-//                 type: "input",
-//                 message: "How many top results?",
-//             }
-//         ])
-//         .then(function (answer) {
-//             // when finished prompting, return songs that match that song title
-//             connection.query(`SELECT song,artist,${answer.whichTop} FROM top5000 ORDER BY ${answer.whichTop} DESC LIMIT ?`, [parseInt(answer.numTop)], function (err, data) {
-//                 if (err) {
-//                     throw err;
-//                 } else {
-//                     console.table(data);
-//                     start();
-//                 }
-//             })
-//         })
-// }
-
-// // function to search by song title
-// function searchByTopArtistAndAlbum() {
-//     // prompt for info about which song to look up
-//     inquirer
-//         .prompt([
-//             {
-//                 name: "artist",
-//                 type: "input",
-//                 message: "Which artist would you like to search by?",
-//             }
-//         ])
-//         .then(function (answer) {
-//             // when finished prompting, return songs that match that song title
-//             connection.query(`SELECT top5000.artist,top5000.year,topalbums.album,topalbums.position as "Album Position",top5000.song,top5000.position as "Song Position"
-//             FROM topalbums
-//             INNER JOIN top5000 ON top5000.year=topalbums.year AND top5000.artist=topalbums.artist
-//             WHERE topalbums.artist=?
-//             ORDER BY top5000.year ASC, topalbums.album, top5000.position;`, answer.artist, function (err, data) {
-//                 if (err) {
-//                     throw err;
-//                 } else {
-//                     console.table(data);
-//                     start();
-//                 }
-//             })
-//         })
-// }
