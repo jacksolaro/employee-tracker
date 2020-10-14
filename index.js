@@ -31,7 +31,7 @@ function start() {
             name: "choice",
             type: "rawlist",
             message: "What would you like to do?",
-            choices: ["Add Department", "Add Employee", "Add Role", "View Departments", "View Employees", "View Roles", "Bonus 3", "EXIT"],
+            choices: ["Add Department", "Add Employee", "Add Role", "View Departments", "View Employees", "View Roles", "Update Employee Role","Update Employee Manager", "EXIT"],
             loop: false
         })
         .then(function (answer) {
@@ -61,6 +61,14 @@ function start() {
                     //   Returns a table of all roles
                     getRoles();
                     break;
+                case "Update Employee Role":
+                    //   Returns a table of all roles
+                    getRoles();
+                    break;
+                case "Update Employee Manager":
+                    //   Returns a table of all roles
+                    updateEmployeeManager();
+                    break;
                 case "EXIT":
                     //   Exit Application
                     connection.end();
@@ -72,7 +80,11 @@ function start() {
         });
 }
 
-// TODO: Add [DEPARTMENT, ROLE, EMPLOYEE]
+// ========================================================
+// ADD METHODS
+// ========================================================
+
+// Add Department to Database
 function addDepartment() {
     // prompt for info about which song to look up
     inquirer
@@ -90,6 +102,7 @@ function addDepartment() {
                     throw err;
                 } else {
                     getDepartments();
+                    console.log("SUCCESS: Your Department has been added.")
                 }
             })
         })
@@ -131,8 +144,8 @@ function addRole() {
                     if (err) {
                         throw err;
                     } else {
-                        console.table(data);
-                        start();
+                        getRoles();
+                        console.log("SUCCESS: Your Role has been added.")
                     }
                 })
             })
@@ -193,8 +206,8 @@ function addEmployee() {
                     if (err) {
                         throw err;
                     } else {
-                        console.table(data);
-                        start();
+                        getEmployees();
+                        console.log("SUCCESS: Your Employee has been added.")
                     }
                 })
             })
@@ -202,8 +215,11 @@ function addEmployee() {
     })
 }
 
+// ========================================================
+// VIEW METHODS
+// ========================================================
 
-// TODO: View [DEPARTMENT, ROLE, EMPLOYEE]
+// View All Departments
 function getDepartments() {
     connection.query(`SELECT * FROM department`, function (err, data) {
         if (err) {
@@ -215,9 +231,13 @@ function getDepartments() {
     })
 }
 
-// TODO: View [DEPARTMENT, ROLE, EMPLOYEE]
+// View All Employees
 function getEmployees() {
-    connection.query(`SELECT * FROM employee`, function (err, data) {
+    connection.query(`SELECT employee.id AS "Employee ID",CONCAT(employee.first_name,' ',employee.last_name) AS "Employee Name",role.title AS "Employee Title",department.name AS "Employee Department", CONCAT(manager.first_name,' ',manager.last_name) AS "Manager" 
+    FROM employee
+    LEFT JOIN role ON employee.role_id = role.id
+    LEFT JOIN employee manager ON employee.manager_id = manager.id
+    LEFT JOIN department ON role.department_id = department.id`, function (err, data) {
         if (err) {
             throw err;
         } else {
@@ -227,9 +247,11 @@ function getEmployees() {
     })
 }
 
-// TODO: View [DEPARTMENT, ROLE, EMPLOYEE]
+// View All Roles
 function getRoles() {
-    connection.query(`SELECT * FROM role`, function (err, data) {
+    connection.query(`SELECT role.id AS "Role ID",role.title AS "Job Title",role.salary,department.name AS "Department" 
+    FROM role
+    LEFT JOIN department ON role.department_id = department.id`, function (err, data) {
         if (err) {
             throw err;
         } else {
@@ -239,9 +261,69 @@ function getRoles() {
     })
 }
 
+// ========================================================
+// UPDATE METHODS
+// ========================================================
 
-// TODO: Update Employees Role
 
+// Update Employees Role
+function updateEmployeeManager() {
+
+    connection.query(`SELECT * FROM employee`, function (err, data) {
+        // If error, throw error
+        if (err) throw err;
+
+        // Create an array to hold the employee options
+        let employeeArr = data.map(function (employee) {
+            return {
+                name: `${employee.first_name} ${employee.last_name}`,
+                value: employee.id
+            }
+        })
+
+        // Create an Array to hold the potential managers
+        let managerArr = data.map(function (manager) {
+            return {
+                name: `${manager.first_name} ${manager.last_name}`,
+                value: manager.id
+            }
+        })
+
+        // Add None/Null as an option to the manager array
+        managerArr.unshift({name:"None",value:null});
+
+        // prompt for info about which employee's manager to update
+        inquirer
+            .prompt([
+                {
+                    name: "employee",
+                    type: "list",
+                    message: "Which employee would you like to update?",
+                    choices: employeeArr
+                },
+                {
+                    name: "manager",
+                    type: "list",
+                    message: "Which manager would you like to assign to this employee?",
+                    choices: managerArr
+                }
+            ])
+            .then(function (answer) {
+                // SQL update the manager for selected employee
+                connection.query(`UPDATE employee SET manager_id = ? WHERE id = ?`, [answer.manager,answer.employee], function (err, data) {
+                    if (err) {
+                        // If Error, throw error
+                        throw err;
+                    } else {
+                        // Display List of all Employees
+                        getEmployees();
+                        // Console Log Success
+                        console.log("SUCCESS: Your Employee's manager has been updated.")
+                    }
+                })
+            })
+    })
+}
 
 
 
