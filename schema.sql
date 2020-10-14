@@ -25,8 +25,10 @@ CREATE TABLE employee (
   role_id INT NOT NULL,
   manager_id INT,
   PRIMARY KEY (id),
-  FOREIGN KEY (manager_id) REFERENCES employee(id)
+  FOREIGN KEY (manager_id) REFERENCES employee(id),
   FOREIGN KEY (role_id) REFERENCES role(id)
 );
 
-INSERT INTO employee (first_name,last_name,role_id) VALUES ("Susan","Doe",1);
+INSERT INTO department (name) VALUES ("HR"),("Finance"),("Sales");
+INSERT INTO role (title,salary,department_id) VALUES ("Account Executive",45000,3),("HR Coordinator",35000,1);
+INSERT INTO employee (first_name,last_name,role_id) VALUES ("Susan","Doe",1),("John","Smith",2);
